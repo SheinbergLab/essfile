@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "essfile"
-version = "0.2.1"
+version = "0.3.0"
 description = "Reader and analysis tools for dserv ESS experiment log files"
 readme = "README.md"
 license = "MIT"

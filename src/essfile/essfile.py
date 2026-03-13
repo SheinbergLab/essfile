@@ -49,6 +49,7 @@ class ESSFile:
         self.obs_times = self._ess['obs_times']
         self.extra_vars = self._ess['extra_vars']
         self.session_vars = self._ess['session_vars']
+        self.pre_datapoints = self._ess['pre_datapoints']
 
         # Event name tables
         self._event_names = self._ess['event_names']

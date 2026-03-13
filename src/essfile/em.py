@@ -261,10 +261,10 @@ def truncate_to_length(data, ns, is_interleaved=False):
 
 def extract_calibration(f):
     """
-    Extract biquadratic calibration from an ESSFile's session data.
+    Extract biquadratic calibration from an ESSFile.
 
-    Looks for the em/biquadratic session variable which contains
-    calibration coefficients as a serialized dict string.
+    Searches pre_datapoints first (calibration set before obs periods),
+    then session_vars as fallback.
 
     Args:
         f: ESSFile object
@@ -274,22 +274,30 @@ def extract_calibration(f):
         plus metadata (source, rms_error, etc.)
         Returns None if no calibration found.
     """
-    session = f.session_vars
+    raw = None
 
-    # Look for em/biquadratic in session vars
-    bq_key = None
-    for key in session:
-        if 'em/biquadratic' in key or 'em:biquadratic' in key:
-            bq_key = key
-            break
+    # Search pre_datapoints first (most common location)
+    if hasattr(f, 'pre_datapoints'):
+        for key, val in f.pre_datapoints.items():
+            if 'em/biquadratic' in key or 'em:biquadratic' in key:
+                raw = val
+                break
 
-    if bq_key is None or not session[bq_key]:
+    # Fall back to session_vars
+    if raw is None:
+        for key, val in f.session_vars.items():
+            if 'em/biquadratic' in key or 'em:biquadratic' in key:
+                raw = val
+                break
+
+    if raw is None:
         return None
 
-    # The calibration data — might be a string dict or structured data
-    raw = session[bq_key]
+    # Unwrap list if needed
     if isinstance(raw, list):
-        raw = raw[0]  # take first entry
+        raw = raw[0] if raw else None
+    if raw is None:
+        return None
 
     # Parse the calibration data
     # This depends on how it's serialized — could be a Tcl dict string

@@ -299,6 +299,16 @@ def _parse_preamble(dslog):
                 params[pending_name] = vals[i] if isinstance(vals[i], str) else str(vals[i])
                 pending_name = None
 
+    # ---- pre-obs datapoints (non-event, non-stimdg) ----
+    # These include things like em/biquadratic calibration data
+    # that are set before the first obs period begins
+    pre_datapoints = {}
+    for i in range(first_obs):
+        name = varnames[i]
+        if name.startswith('evt:') or name in ('stimdg', 'logger:open'):
+            continue
+        pre_datapoints[name] = vals[i]
+
     return {
         'stimdg': stimdg,
         'stimdg_raw': stimdg_raw,
@@ -308,6 +318,7 @@ def _parse_preamble(dslog):
         'subtype_ids': subtype_ids,
         'identity': identity,
         'params': params,
+        'pre_datapoints': pre_datapoints,
         'first_obs_index': first_obs,
     }
 
@@ -487,6 +498,7 @@ def read_ess(filename):
         'identity': pre['identity'],
         'params': pre['params'],
         'stimdg': pre['stimdg'],
+        'pre_datapoints': pre['pre_datapoints'],
 
         'event_names': pre['event_names'],
         'name_to_id': pre['name_to_id'],
