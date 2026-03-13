@@ -400,7 +400,19 @@ def process_raw_streams(f, valid_indices, calibration=None):
     for var_name, (key, interleaved) in stream_map.items():
         data = f.get_extra_var(var_name, valid_indices)
         if data is not None and any(d is not None for d in data):
-            available[key] = (data, interleaved)
+            # Concatenate chunked data: each trial may have multiple
+            # datapoint updates (list of arrays) that need merging
+            merged = []
+            for trial in data:
+                if trial is None:
+                    merged.append(np.array([]))
+                elif isinstance(trial, list):
+                    # Multiple updates per trial — concatenate
+                    arrays = [np.asarray(a) for a in trial if a is not None]
+                    merged.append(np.concatenate(arrays) if arrays else np.array([]))
+                else:
+                    merged.append(np.asarray(trial))
+            available[key] = (merged, interleaved)
 
     if not available:
         return result
