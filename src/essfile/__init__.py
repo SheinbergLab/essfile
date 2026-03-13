@@ -19,5 +19,6 @@ Quick start:
 
 from essfile.essread import read_dslog, read_ess
 from essfile.essfile import ESSFile
+from essfile import em
 
-__all__ = ['read_dslog', 'read_ess', 'ESSFile']
+__all__ = ['read_dslog', 'read_ess', 'ESSFile', 'em']
