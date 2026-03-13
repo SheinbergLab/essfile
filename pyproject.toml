@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "essfile"
+version = "0.1.0"
+description = "Reader and analysis tools for dserv ESS experiment log files"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "SheinbergLab" },
+]
+keywords = ["neuroscience", "experiment", "data", "ess", "dserv"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy",
+    "dgread",
+]
+
+[project.optional-dependencies]
+pandas = ["pandas"]
+all = ["pandas"]
+
+[project.urls]
+Homepage = "https://github.com/SheinbergLab/essfile"
+Repository = "https://github.com/SheinbergLab/essfile"
+Issues = "https://github.com/SheinbergLab/essfile/issues"
+
+[project.scripts]
+essread = "essfile.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
