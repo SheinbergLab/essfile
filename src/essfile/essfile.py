@@ -296,6 +296,40 @@ class ESSFile:
             'n_obs': self.n_obs,
         }
 
+    # ---- standard extra data extraction ----
+
+    def extract_extra_data(self, trials, valid_indices):
+        """
+        Process eye movement data (with calibration if available) and
+        collect remaining extra variables into the trials dict.
+
+        This is the standard end-of-extractor step that all extractors share.
+
+        Args:
+            trials: dict being built by the extractor
+            valid_indices: array of valid obs indices
+        """
+        from essfile import em
+
+        consumed = set()
+
+        # Eye movement processing
+        calib = em.extract_calibration(self)
+        if calib:
+            em.calibration_info(calib)
+            eye_data = em.process_raw_streams(self, valid_indices, calibration=calib)
+            consumed_vars = eye_data.pop('_consumed_vars', [])
+            consumed.update(consumed_vars)
+            trials.update(eye_data)
+
+        # Remaining extra vars
+        for varname, var_data in self.extra_vars.items():
+            if varname in consumed:
+                continue
+            safe_name = varname.replace('/', '_').replace(':', '_')
+            if safe_name not in trials:
+                trials[safe_name] = [var_data[i] for i in valid_indices]
+
     # ---- string representation ----
 
     def __repr__(self):

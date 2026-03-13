@@ -415,6 +415,7 @@ def process_raw_streams(f, valid_indices, calibration=None):
             available[key] = (merged, interleaved)
 
     if not available:
+        result['_consumed_vars'] = []
         return result
 
     # Compute minimum lengths across all streams for consistent truncation
@@ -457,6 +458,9 @@ def process_raw_streams(f, valid_indices, calibration=None):
             truncated = truncate_to_length(data, ns, is_interleaved=False)
             out_key = 'in_blink' if key == 'blink' else key
             result[out_key] = truncated
+
+    # Track which extra var names were consumed by this processing
+    result['_consumed_vars'] = list(stream_map.keys())
 
     return result
 
