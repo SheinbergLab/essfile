@@ -53,7 +53,7 @@ ID_HOSTNAME = 4
 
 # ---- low-level binary reading ----
 
-# Pre-compiled struct formats for the inner loop
+# Pre-compiled struct formats
 _S_UINT16 = struct.Struct('<H')
 _S_UINT32 = struct.Struct('<I')
 _S_UINT64 = struct.Struct('<Q')
@@ -169,89 +169,33 @@ def read_dslog(filename):
             'timestamp': list of float (seconds from file start)
             'vals':      list of decoded values
     """
-    # Read entire file into memory for faster parsing
-    with open(filename, 'rb') as fp:
-        buf = fp.read()
-
-    mv = memoryview(buf)
-    pos = 0
-    blen = len(buf)
-
-    # Parse header
-    if blen < DSLOG_HEADER_SIZE:
-        raise ValueError("File too short to contain dslog header")
-    if buf[:5] != DSLOG_MAGIC:
-        raise ValueError("Not a dslog file (bad magic)")
-    version = buf[5]
-    if version == 0:
-        raise ValueError("Invalid dslog version 0")
-    start_ts = _S_UINT64.unpack_from(buf, 8)[0]
+    fp = open(filename, 'rb')
+    version, start_ts = _read_header(fp)
     start_sec = start_ts / 1_000_000.0
-    pos = DSLOG_HEADER_SIZE
 
     varnames = ['logger:open']
     timestamps = [0.0]
     vals = [version]
 
-    # Local references for speed
-    s_uint16 = _S_UINT16.unpack_from
-    s_uint32 = _S_UINT32.unpack_from
-    s_body = _S_BODY.unpack_from
-    decode_value = _decode_value
-    evt_code = DSERV_EVT
-    varnames_append = varnames.append
-    timestamps_append = timestamps.append
-    vals_append = vals.append
-
-    while pos < blen:
-        # varlen (2 bytes)
-        if pos + 2 > blen:
+    while True:
+        dp = _read_datapoint(fp)
+        if dp is None:
             break
-        varlen = s_uint16(buf, pos)[0]
-        pos += 2
 
-        # varname
-        if pos + varlen > blen:
-            break
-        varname = buf[pos:pos + varlen].decode('ascii', errors='replace')
-        pos += varlen
+        time_sec = dp['timestamp'] / 1_000_000.0 - start_sec
 
-        # body: timestamp(8) + flags(4) + type_union(4) + data_len(4) = 20
-        if pos + 20 > blen:
-            break
-        timestamp_us, flags = s_body(buf, pos)
-        dtype_byte = buf[pos + 12]
-        data_len = s_uint32(buf, pos + 16)[0]
-
-        if dtype_byte == evt_code:
-            etype = buf[pos + 13]
-            esubtype = buf[pos + 14]
-            eputtype = buf[pos + 15]
+        if dp['is_event']:
+            name = f"evt:{dp['event_type']}:{dp['event_subtype']}"
+            value_dtype = dp['event_puttype']
         else:
-            etype = 0
-            esubtype = 0
-            eputtype = 0
+            name = dp['varname']
+            value_dtype = dp['dtype']
 
-        pos += 20
+        varnames.append(name)
+        timestamps.append(time_sec)
+        vals.append(_decode_value(value_dtype, dp['data']))
 
-        # data payload
-        if pos + data_len > blen:
-            break
-        data = bytes(buf[pos:pos + data_len]) if data_len > 0 else b''
-        pos += data_len
-
-        # Build output
-        time_sec = timestamp_us / 1_000_000.0 - start_sec
-
-        if dtype_byte == evt_code:
-            varnames_append(f"evt:{etype}:{esubtype}")
-            vals_append(decode_value(eputtype, data))
-        else:
-            varnames_append(varname)
-            dtype = dtype_byte if dtype_byte < 12 else s_uint32(buf, pos - data_len - 8)[0]
-            vals_append(decode_value(dtype_byte, data))
-
-        timestamps_append(time_sec)
+    fp.close()
 
     return {
         'version': version,
